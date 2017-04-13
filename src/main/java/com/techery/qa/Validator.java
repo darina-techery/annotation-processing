@@ -6,7 +6,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collector;
@@ -14,7 +13,6 @@ import java.util.stream.Collectors;
 
 import static com.techery.qa.TypeResolver.DEVICE_PREFIXES;
 import static javax.tools.Diagnostic.Kind.ERROR;
-import static javax.tools.Diagnostic.Kind.NOTE;
 
 class Validator {
 	private Elements elementUtils;
@@ -50,28 +48,6 @@ class Validator {
 				}
 			}
 		}
-	}
-
-	private void checkStepsModule(TypeMirror stepsClass, Set<TypeMirror> actionClasses) {
-		validationErrors = new ArrayList<>();
-		TypeElement stepsModuleEl = elementUtils.getTypeElement("dagger.StepsModule");
-		for (Element moduleElement : stepsModuleEl.getEnclosedElements()) {
-			if (moduleElement instanceof ExecutableElement) {
-				ExecutableElement method = ((ExecutableElement) moduleElement);
-				TypeMirror methodReturnType = method.getReturnType();
-				if (methodReturnType.equals(stepsClass)) {
-					ExecutableElement provideStepsMethod = ((ExecutableElement) moduleElement);
-					boolean success = checkArgumentTypes(provideStepsMethod, actionClasses)
-							&& checkAnnotation(method, "dagger.Provides");
-					if (!success) {
-						messager.printMessage(NOTE, "StepsModule validation failed.", stepsModuleEl);
-						validationErrors.forEach(e -> messager.printMessage(ERROR, e, method));
-					}
-					return;
-				}
-			}
-		}
-		messager.printMessage(ERROR, "No @Provides method for ["+stepsClass+"] was found in StepsModule.", stepsModuleEl);
 	}
 
 	private boolean checkArgumentTypes(ExecutableElement method, Set<TypeMirror> parameterTypes) {
