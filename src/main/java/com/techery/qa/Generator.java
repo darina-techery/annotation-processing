@@ -31,12 +31,22 @@ public class Generator {
 		messager = processingEnv.getMessager();
 	}
 
-	public void generate(StepsActionsStructure structure) {
+	public void generateDaggerStructure(StepsActionsStructure structure) {
 		this.structure = structure;
 		generateActionsDefinition();
 		generateActionsModule();
 		generateStepsModule();
 		generateStepsComponent();
+	}
+
+	public void generateMissingActionsClass(TypeMirror parentActionsClass, String deviceSpecificClassName) {
+		final String packageName = "actions";
+		final ClassName parentActionsClassName = TypeResolver.getClassName(parentActionsClass);
+		TypeSpec.Builder typeBuilder = TypeSpec
+				.classBuilder(deviceSpecificClassName)
+				.addModifiers(PUBLIC)
+				.superclass(parentActionsClassName);
+		createJavaFile(packageName, typeBuilder.build());
 	}
 
 	private String decapitalize(String str) {

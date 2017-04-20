@@ -44,7 +44,7 @@ public class TestAnnotationProcessor extends AbstractProcessor {
 		}
 		if (!structure.isEmpty()) {
 			validator.validateActionsClasses(structure.getAllActionsClasses());
-			generator.generate(structure);
+			generator.generateDaggerStructure(structure);
 		}
 		return false;
 	}
