@@ -9,11 +9,9 @@ buildscript {
 
 
 group 'com.techery.qa'
-version '1.1'
+version '1.2'
 apply plugin: 'java'
 apply plugin: 'com.github.johnrengelman.shadow'
-
-version = '1.1'
 
 repositories {
     mavenCentral()
@@ -25,9 +23,3 @@ dependencies {
 }
 
 project.tasks.assemble.dependsOn project.tasks.shadowJar
-
-//jar {
-//    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-//    manifest
-//            { attributes 'Main-Class': 'com.techery.qa.TestAnnotationProcessor' }
-//}

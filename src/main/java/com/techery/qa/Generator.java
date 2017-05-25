@@ -17,21 +17,27 @@ import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.tools.Diagnostic.Kind.ERROR;
 
 public class Generator {
+
+	private static final String DAGGER_PACKAGE = "dagger";
+	private static final String ACTIONS_MODULE_CLASS_NAME = "ActionsModule";
+	private static final String STEPS_MODULE_CLASS_NAME = "StepsModule";
+	private static final ClassName ACTION_DEFINITIONS_CLASS_NAME =
+			ClassName.get("actions.definitions", "ActionsDefinition");
+	private static final ClassName MODULE_ANNOTATION_NAME =
+			ClassName.get(DAGGER_PACKAGE, "Module");
+	private static final ClassName PROVIDES_ANNOTATION_NAME =
+			ClassName.get(DAGGER_PACKAGE, "Provides");
+
 	private final Filer filer;
 	private final Messager messager;
-	private static final ClassName actionDefinitionsClassName = ClassName.get("actions.definitions", "ActionsDefinition");
-	private static final ClassName moduleAnnotationName = ClassName.get("dagger", "Module");
-	private static final ClassName providesAnnotationName = ClassName.get("dagger", "Provides");
 	private StepsActionsStructure structure;
-	private static final String actionsModuleClassName = "ActionsModule";
-	private static final String stepsModuleClassName = "StepsModule";
 
-	public Generator(ProcessingEnvironment processingEnv) {
+	Generator(ProcessingEnvironment processingEnv) {
 		filer = processingEnv.getFiler();
 		messager = processingEnv.getMessager();
 	}
 
-	public void generateDaggerStructure(StepsActionsStructure structure) {
+	void generateDaggerStructure(StepsActionsStructure structure) {
 		this.structure = structure;
 		generateActionsDefinition();
 		generateActionsModule();
@@ -39,8 +45,8 @@ public class Generator {
 		generateStepsComponent();
 	}
 
-	public void generateMissingActionsClass(TypeMirror parentActionsClass, String deviceSpecificClassName) {
-		final String packageName = "actions";
+	void generateMissingActionsClass(TypeMirror parentActionsClass, String deviceSpecificClassName) {
+		final String packageName = TypeResolver.getPackageName(parentActionsClass);
 		final ClassName parentActionsClassName = TypeResolver.getClassName(parentActionsClass);
 		TypeSpec.Builder typeBuilder = TypeSpec
 				.classBuilder(deviceSpecificClassName)
@@ -54,8 +60,8 @@ public class Generator {
 	}
 
 	private void generateActionsDefinition() {
-		final String actionsDefinitionInterfaceName = actionDefinitionsClassName.simpleName();
-		final String packageName = actionDefinitionsClassName.packageName();
+		final String actionsDefinitionInterfaceName = ACTION_DEFINITIONS_CLASS_NAME.simpleName();
+		final String packageName = ACTION_DEFINITIONS_CLASS_NAME.packageName();
 		TypeSpec.Builder typeBuilder = TypeSpec
 				.interfaceBuilder(actionsDefinitionInterfaceName)
 				.addModifiers(PUBLIC);
@@ -94,21 +100,20 @@ public class Generator {
 	}
 
 	private void generateActionsModule() {
-		final String packageName = "dagger";
 		TypeSpec.Builder classBuilder = TypeSpec
-				.classBuilder(actionsModuleClassName)
+				.classBuilder(ACTIONS_MODULE_CLASS_NAME)
 				.addModifiers(PUBLIC)
-				.addAnnotation(moduleAnnotationName)
-				.addSuperinterface(actionDefinitionsClassName);
-		String actionsDefinitionParam = decapitalize(actionDefinitionsClassName.simpleName());
+				.addAnnotation(MODULE_ANNOTATION_NAME)
+				.addSuperinterface(ACTION_DEFINITIONS_CLASS_NAME);
+		String actionsDefinitionParam = decapitalize(ACTION_DEFINITIONS_CLASS_NAME.simpleName());
 		FieldSpec actionsDefinition = FieldSpec
-				.builder(actionDefinitionsClassName, actionsDefinitionParam, Modifier.PRIVATE, Modifier.FINAL)
+				.builder(ACTION_DEFINITIONS_CLASS_NAME, actionsDefinitionParam, Modifier.PRIVATE, Modifier.FINAL)
 				.build();
 		classBuilder.addField(actionsDefinition);
 
 		MethodSpec constructor = MethodSpec
 				.constructorBuilder()
-				.addParameter(actionDefinitionsClassName, actionsDefinitionParam)
+				.addParameter(ACTION_DEFINITIONS_CLASS_NAME, actionsDefinitionParam)
 				.addStatement("this.$N=$N", actionsDefinitionParam, actionsDefinitionParam)
 				.addModifiers(PUBLIC)
 				.build();
@@ -119,22 +124,21 @@ public class Generator {
 			String methodName = decapitalize(returnType.simpleName());
 			MethodSpec providingMethod = MethodSpec.methodBuilder(methodName)
 					.addAnnotation(Override.class)
-					.addAnnotation(providesAnnotationName)
+					.addAnnotation(PROVIDES_ANNOTATION_NAME)
 					.addModifiers(PUBLIC)
 					.addStatement("return $N.$N()", actionsDefinitionParam, methodName)
 					.returns(returnType)
 					.build();
 			classBuilder.addMethod(providingMethod);
 		}
-		createJavaFile(packageName, classBuilder.build());
+		createJavaFile(DAGGER_PACKAGE, classBuilder.build());
 	}
 
 	private void generateStepsModule() {
-		final String packageName = "dagger";
 		TypeSpec.Builder classBuilder = TypeSpec
-				.classBuilder(stepsModuleClassName)
+				.classBuilder(STEPS_MODULE_CLASS_NAME)
 				.addModifiers(PUBLIC)
-				.addAnnotation(moduleAnnotationName);
+				.addAnnotation(MODULE_ANNOTATION_NAME);
 		for (TypeMirror stepsClass : structure.getAllStepsClasses()) {
 			ClassName returnType = TypeResolver.getClassName(stepsClass);
 			String methodName = decapitalize(returnType.simpleName());
@@ -150,7 +154,7 @@ public class Generator {
 			}
 			String constructorArgumentsStr = String.join(", ", constructorArguments);
 			MethodSpec method = MethodSpec.methodBuilder(methodName)
-					.addAnnotation(providesAnnotationName)
+					.addAnnotation(PROVIDES_ANNOTATION_NAME)
 					.addModifiers(PUBLIC)
 					.addParameters(paramsList)
 					.addStatement("return new $N($N)", returnType.simpleName(), constructorArgumentsStr)
@@ -158,18 +162,17 @@ public class Generator {
 					.build();
 			classBuilder.addMethod(method);
 		}
-		createJavaFile(packageName, classBuilder.build());
+		createJavaFile(DAGGER_PACKAGE, classBuilder.build());
 	}
 
 	private void generateStepsComponent() {
 		final String className = "StepsComponent";
-		final String packageName = "dagger";
 		TypeSpec.Builder classBuilder = TypeSpec
 				.interfaceBuilder(className)
 				.addModifiers(PUBLIC);
-		ClassName componentAnnotationName = ClassName.get("dagger", "Component");
+		ClassName componentAnnotationName = ClassName.get(DAGGER_PACKAGE, "Component");
 		CodeBlock annotationValue = CodeBlock.builder().add("{$N.class, $N.class}",
-				actionsModuleClassName, stepsModuleClassName).build();
+				ACTIONS_MODULE_CLASS_NAME, STEPS_MODULE_CLASS_NAME).build();
 		AnnotationSpec componentAnnotation = AnnotationSpec.builder(componentAnnotationName)
 				.addMember("modules", annotationValue).build();
 		classBuilder.addAnnotation(componentAnnotation);
@@ -181,7 +184,7 @@ public class Generator {
 					.returns(returnType).build();
 			classBuilder.addMethod(method);
 		}
-		createJavaFile(packageName, classBuilder.build());
+		createJavaFile(DAGGER_PACKAGE, classBuilder.build());
 	}
 
 	private void createJavaFile(String packageName, TypeSpec typeSpec) {
