@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import static com.techery.qa.TypeResolver.DEVICE_PREFIXES;
 import static javax.tools.Diagnostic.Kind.ERROR;
+import static javax.tools.Diagnostic.Kind.NOTE;
 import static javax.tools.Diagnostic.Kind.WARNING;
 
 class Validator {
@@ -39,36 +40,43 @@ class Validator {
 		//get all classes marked as Actions
 		for (TypeMirror baseActionsClass : actionsClasses) {
 			String baseClassName = TypeResolver.getSimpleName(baseActionsClass);
-			//get all device-specific Actions class names
-			for (String prefix : DEVICE_PREFIXES) {
-				String deviceSpecificClassName = prefix + baseClassName;
-				String fullDeviceSpecificClassName = TypeResolver.getPackageName(baseActionsClass)
-						+ "." + deviceSpecificClassName;
-				TypeElement deviceSpecificElement = elementUtils
-						.getTypeElement(fullDeviceSpecificClassName);
-				if (deviceSpecificElement == null) {
-					//check if base actions class has abstract methods
-					Element baseActionsClassElement = typeUtils.asElement(baseActionsClass);
-					List<? extends Element> baseActionsClassMembers = elementUtils.getAllMembers((TypeElement) baseActionsClassElement);
-					for (Element element : baseActionsClassMembers) {
-						if (element.getModifiers().contains(Modifier.ABSTRACT)) {
-							errorMessages.add("Class [" + deviceSpecificClassName
-									+ "] was not found and cannot be created automatically, "
-									+ "because parent class [" + baseClassName
-									+ "] contains abstract method [" + element.getSimpleName() + "].\n"
-									+ "Please create this class and override method manually, or implement it in base class.");
+			//skip actions class if it is not abstract
+			if (!typeUtils.asElement(baseActionsClass).getModifiers().contains(Modifier.ABSTRACT)) {
+				messager.printMessage(NOTE,
+						String.format("Actions class %s is not abstract. Device-specific class will not be created.",
+								baseClassName));
+			} else {
+				//get all device-specific Actions class names
+				for (String prefix : DEVICE_PREFIXES) {
+					String deviceSpecificClassName = prefix + baseClassName;
+					String fullDeviceSpecificClassName = TypeResolver.getPackageName(baseActionsClass)
+							+ "." + deviceSpecificClassName;
+					TypeElement deviceSpecificElement = elementUtils
+							.getTypeElement(fullDeviceSpecificClassName);
+					if (deviceSpecificElement == null) {
+						//check if base actions class has abstract methods
+						Element baseActionsClassElement = typeUtils.asElement(baseActionsClass);
+						List<? extends Element> baseActionsClassMembers = elementUtils.getAllMembers((TypeElement) baseActionsClassElement);
+						for (Element element : baseActionsClassMembers) {
+							if (element.getModifiers().contains(Modifier.ABSTRACT)) {
+								errorMessages.add("Class [" + deviceSpecificClassName
+										+ "] was not found and cannot be created automatically, "
+										+ "because parent class [" + baseClassName
+										+ "] contains abstract method [" + element.getSimpleName() + "].\n"
+										+ "Please create this class and override method manually, or implement it in base class.");
+							}
 						}
-					}
-					if (errorMessages.isEmpty()) {
-						messager.printMessage(WARNING,
-								"Class [" + deviceSpecificClassName + "] was not found and will be created empty.\n\n");
-						classGenerator.generateMissingActionsClass(baseActionsClass, deviceSpecificClassName);
-					}
-				} else if (deviceSpecificElement.getSuperclass() == null
+						if (errorMessages.isEmpty()) {
+							messager.printMessage(WARNING,
+									"Class [" + deviceSpecificClassName + "] was not found and will be created empty.\n\n");
+							classGenerator.generateMissingActionsClass(baseActionsClass, deviceSpecificClassName);
+						}
+					} else if (deviceSpecificElement.getSuperclass() == null
 							|| !typeUtils.isAssignable(deviceSpecificElement.asType(), baseActionsClass)) {
-					errorMessages.add("Class [" + deviceSpecificClassName
-							+ "] should extend [" + baseActionsClass + "], but ["
-							+ deviceSpecificElement.getSuperclass() + "] found instead.\n\n");
+						errorMessages.add("Class [" + deviceSpecificClassName
+								+ "] should extend [" + baseActionsClass + "], but ["
+								+ deviceSpecificElement.getSuperclass() + "] found instead.\n\n");
+					}
 				}
 			}
 		}
