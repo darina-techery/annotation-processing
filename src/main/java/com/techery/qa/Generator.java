@@ -7,6 +7,7 @@ import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,10 +32,12 @@ public class Generator {
 	private final Filer filer;
 	private final Messager messager;
 	private StepsActionsStructure structure;
+	private Types typeUtils;
 
 	Generator(ProcessingEnvironment processingEnv) {
 		filer = processingEnv.getFiler();
 		messager = processingEnv.getMessager();
+		typeUtils = processingEnv.getTypeUtils();
 	}
 
 	void generateDaggerStructure(StepsActionsStructure structure) {
@@ -65,6 +68,7 @@ public class Generator {
 		TypeSpec.Builder typeBuilder = TypeSpec
 				.interfaceBuilder(actionsDefinitionInterfaceName)
 				.addModifiers(PUBLIC);
+		//create ActionDefinisions interface
 		for (TypeMirror actionsClass : structure.getAllActionsClasses()) {
 			String methodName = decapitalize(TypeResolver.getSimpleName(actionsClass.toString()));
 			ClassName actionsType = TypeResolver.getClassName(actionsClass);
@@ -76,6 +80,7 @@ public class Generator {
 			typeBuilder.addMethod(actionsMethod);
 		}
 		createJavaFile(packageName, typeBuilder.build());
+		//create ActionDefinitions classes
 		ClassName actionDefinitionsAsSuperInterface = ClassName.get(packageName, actionsDefinitionInterfaceName);
 		for (String prefix : DEVICE_PREFIXES) {
 			typeBuilder = TypeSpec
@@ -85,12 +90,19 @@ public class Generator {
 			for (TypeMirror actionsClass : structure.getAllActionsClasses()) {
 				String methodName = decapitalize(TypeResolver.getSimpleName(actionsClass.toString()));
 				ClassName baseActionsType = TypeResolver.getClassName(actionsClass);
-				ClassName deviceSpecificActionsType = TypeResolver.getClassNameWithPrefix(actionsClass, prefix);
+				ClassName actionsTypeToProvide;
+				if (typeUtils.asElement(actionsClass).getModifiers().contains(Modifier.ABSTRACT)) {
+					//use device-specific classes if parent classes are abstract
+					actionsTypeToProvide = TypeResolver.getClassNameWithPrefix(actionsClass, prefix);
+				} else {
+					//use base actions class if it is not abstract
+					actionsTypeToProvide = baseActionsType;
+				}
 				MethodSpec actionsMethod = MethodSpec
 						.methodBuilder(methodName)
 						.addAnnotation(Override.class)
 						.addModifiers(PUBLIC)
-						.addStatement("return new $T()", deviceSpecificActionsType)
+						.addStatement("return new $T()", actionsTypeToProvide)
 						.returns(baseActionsType)
 						.build();
 				typeBuilder.addMethod(actionsMethod);

@@ -10,7 +10,7 @@ public class TypeResolver {
 	public static final Set<String> DEVICE_PREFIXES = new HashSet<>();
 
 	static  {
-		DEVICE_PREFIXES.add("IPhone");
+		DEVICE_PREFIXES.add("IOS");
 		DEVICE_PREFIXES.add("Droid");
 	}
 
