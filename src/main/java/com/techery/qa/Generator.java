@@ -19,11 +19,12 @@ import static javax.tools.Diagnostic.Kind.ERROR;
 
 public class Generator {
 
+	static final String GLOBAL_PACKAGE = "com.techery.dtat";
 	private static final String DAGGER_PACKAGE = "dagger";
 	private static final String ACTIONS_MODULE_CLASS_NAME = "ActionsModule";
 	private static final String STEPS_MODULE_CLASS_NAME = "StepsModule";
-	private static final ClassName ACTION_DEFINITIONS_CLASS_NAME =
-			ClassName.get("actions.definitions", "ActionsDefinition");
+	private static final ClassName ACTIONS_DEFINITION_CLASS_NAME =
+			ClassName.get(GLOBAL_PACKAGE + ".actions.definitions", "ActionsDefinition");
 	private static final ClassName MODULE_ANNOTATION_NAME =
 			ClassName.get(DAGGER_PACKAGE, "Module");
 	private static final ClassName PROVIDES_ANNOTATION_NAME =
@@ -63,8 +64,8 @@ public class Generator {
 	}
 
 	private void generateActionsDefinition() {
-		final String actionsDefinitionInterfaceName = ACTION_DEFINITIONS_CLASS_NAME.simpleName();
-		final String packageName = ACTION_DEFINITIONS_CLASS_NAME.packageName();
+		final String actionsDefinitionInterfaceName = ACTIONS_DEFINITION_CLASS_NAME.simpleName();
+		final String packageName = ACTIONS_DEFINITION_CLASS_NAME.packageName();
 		TypeSpec.Builder typeBuilder = TypeSpec
 				.interfaceBuilder(actionsDefinitionInterfaceName)
 				.addModifiers(PUBLIC);
@@ -116,16 +117,16 @@ public class Generator {
 				.classBuilder(ACTIONS_MODULE_CLASS_NAME)
 				.addModifiers(PUBLIC)
 				.addAnnotation(MODULE_ANNOTATION_NAME)
-				.addSuperinterface(ACTION_DEFINITIONS_CLASS_NAME);
-		String actionsDefinitionParam = decapitalize(ACTION_DEFINITIONS_CLASS_NAME.simpleName());
+				.addSuperinterface(ACTIONS_DEFINITION_CLASS_NAME);
+		String actionsDefinitionParam = decapitalize(ACTIONS_DEFINITION_CLASS_NAME.simpleName());
 		FieldSpec actionsDefinition = FieldSpec
-				.builder(ACTION_DEFINITIONS_CLASS_NAME, actionsDefinitionParam, Modifier.PRIVATE, Modifier.FINAL)
+				.builder(ACTIONS_DEFINITION_CLASS_NAME, actionsDefinitionParam, Modifier.PRIVATE, Modifier.FINAL)
 				.build();
 		classBuilder.addField(actionsDefinition);
 
 		MethodSpec constructor = MethodSpec
 				.constructorBuilder()
-				.addParameter(ACTION_DEFINITIONS_CLASS_NAME, actionsDefinitionParam)
+				.addParameter(ACTIONS_DEFINITION_CLASS_NAME, actionsDefinitionParam)
 				.addStatement("this.$N=$N", actionsDefinitionParam, actionsDefinitionParam)
 				.addModifiers(PUBLIC)
 				.build();

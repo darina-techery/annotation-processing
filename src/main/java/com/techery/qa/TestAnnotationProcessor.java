@@ -11,8 +11,10 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.Set;
 
+import static com.techery.qa.Generator.GLOBAL_PACKAGE;
+
 @SupportedAnnotationTypes({
-		"utils.annotations.UseActions"
+		GLOBAL_PACKAGE + ".utils.annotations.UseActions"
 })
 public class TestAnnotationProcessor extends AbstractProcessor {
 
